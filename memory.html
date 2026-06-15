@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐶 記憶翻牌</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .card {
+    aspect-ratio: 1;
+    border: none;
+    border-radius: 16px;
+    font-size: 2.4rem;
+    cursor: pointer;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    background: linear-gradient(145deg, #7ec8e3, #5aa9d9);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    user-select: none;
+  }
+  .card:active:not(.matched):not(.flipped) { transform: scale(0.94); }
+  .card.flipped, .card.matched {
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    color: #333;
+    cursor: default;
+  }
+  .card.matched {
+    background: #c8f7c5;
+    cursor: default;
+    pointer-events: none;
+  }
+  @media (max-width: 400px) { .card { font-size: 1.8rem; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <nav><a href="index.html">← 回到遊戲選單</a></nav>
+  <h1>🐾 記憶翻牌</h1>
+  <p class="subtitle">翻開兩張一樣的牌就可以消除喔！</p>
+  <div class="info-bar">
+    <span>步數：<span id="moves">0</span></span>
+    <span>配對：<span id="pairs">0</span> / 8</span>
+  </div>
+  <div class="grid" id="grid"></div>
+  <button class="btn" id="restartBtn">🔄 重新開始</button>
+  <div class="msg" id="winMsg"></div>
+</div>
+<script>
+  const EMOJIS = ['🐶','🐱','🐼','🐸','🐰','🦊','🐯','🐮'];
+  let cards = [], flipped = [], matched = 0, moves = 0, lock = false;
+
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function init() {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    flipped = []; matched = 0; moves = 0; lock = false;
+    document.getElementById('moves').textContent = '0';
+    document.getElementById('pairs').textContent = '0';
+    document.getElementById('winMsg').textContent = '';
+    cards = shuffle([...EMOJIS, ...EMOJIS]);
+    cards.forEach((emoji, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'card';
+      btn.dataset.index = i;
+      btn.addEventListener('click', () => flip(i));
+      grid.appendChild(btn);
+    });
+  }
+
+  function flip(i) {
+    if (lock) return;
+    const btn = document.querySelectorAll('.card')[i];
+    if (btn.classList.contains('flipped') || btn.classList.contains('matched')) return;
+    if (flipped.length === 2) return;
+    btn.classList.add('flipped');
+    btn.textContent = cards[i];
+    flipped.push(i);
+    if (flipped.length === 2) {
+      moves++;
+      document.getElementById('moves').textContent = moves;
+      checkMatch();
+    }
+  }
+
+  function checkMatch() {
+    const [a, b] = flipped;
+    const btns = document.querySelectorAll('.card');
+    if (cards[a] === cards[b]) {
+      btns[a].classList.remove('flipped');
+      btns[a].classList.add('matched');
+      btns[b].classList.remove('flipped');
+      btns[b].classList.add('matched');
+      matched++;
+      document.getElementById('pairs').textContent = matched;
+      flipped = [];
+      if (matched === 8) {
+        document.getElementById('winMsg').textContent = '🎉 你贏了！太棒啦！';
+      }
+    } else {
+      lock = true;
+      setTimeout(() => {
+        btns[a].classList.remove('flipped');
+        btns[a].textContent = '';
+        btns[b].classList.remove('flipped');
+        btns[b].textContent = '';
+        flipped = [];
+        lock = false;
+      }, 700);
+    }
+  }
+
+  document.getElementById('restartBtn').addEventListener('click', init);
+  init();
+</script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧩 滑塊拼圖</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .puzzle-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .preview {
+    display: grid;
+    grid-template-columns: repeat(3, 40px);
+    gap: 3px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+  }
+  .preview div {
+    width: 40px;
+    height: 40px;
+    background: #fff;
+    border-radius: 6px;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .puzzle-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    width: 100%;
+    max-width: 320px;
+  }
+  .tile {
+    aspect-ratio: 1;
+    border: none;
+    border-radius: 16px;
+    font-size: 3rem;
+    cursor: pointer;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.12s;
+  }
+  .tile:active:not(.empty) { transform: scale(0.92); }
+  .tile.empty {
+    background: transparent;
+    box-shadow: none;
+    cursor: default;
+    pointer-events: none;
+  }
+  .info-bar { margin-top: 8px; }
+  .controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .hint {
+    background: #f0d5b0;
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 0.85rem;
+    color: #6b3a2a;
+    margin-bottom: 12px;
+  }
+  .tile.correct-pos {
+    box-shadow: 0 0 0 3px #c8f7c5;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <nav><a href="index.html">← 回到遊戲選單</a></nav>
+  <h1>🧩 滑塊拼圖</h1>
+  <p class="subtitle">點擊方塊滑動，拼回原來的順序！</p>
+
+  <div class="puzzle-wrapper">
+    <div style="font-size:0.85rem;color:#8b7a6a;margin-bottom:4px;">目標排列：</div>
+    <div class="preview" id="preview"></div>
+    <div class="puzzle-grid" id="puzzle"></div>
+  </div>
+
+  <div class="info-bar">
+    <span>步數：<span id="moves">0</span></span>
+  </div>
+  <div class="controls">
+    <button class="btn btn-small" id="restartBtn">🔄 重新洗牌</button>
+  </div>
+  <div class="msg" id="winMsg"></div>
+</div>
+<script>
+  const TARGET = ['🐶','🐱','🐼','🐸','🐰','🦊','🐯','🐮',''];
+  const SIZE = 3;
+
+  let board = [];
+  let moves = 0;
+
+  function shuffleBoard() {
+    do {
+      const arr = [...TARGET];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      board = arr;
+    } while (!isSolvable(board) || isSolved(board));
+  }
+
+  function isSolvable(arr) {
+    let inv = 0;
+    const flat = arr.filter(v => v !== '').map(v => TARGET.indexOf(v));
+    for (let i = 0; i < flat.length; i++)
+      for (let j = i + 1; j < flat.length; j++)
+        if (flat[i] > flat[j]) inv++;
+    const emptyRow = Math.floor(arr.indexOf('') / SIZE);
+    const gridSize = SIZE;
+    if (gridSize % 2 === 1) return inv % 2 === 0;
+    return (inv + emptyRow) % 2 === 1;
+  }
+
+  function isSolved(arr) {
+    return arr.every((v, i) => v === TARGET[i]);
+  }
+
+  function getEmpty() {
+    return board.indexOf('');
+  }
+
+  function canMove(idx) {
+    const empty = getEmpty();
+    const er = Math.floor(empty / SIZE), ec = empty % SIZE;
+    const ir = Math.floor(idx / SIZE), ic = idx % SIZE;
+    return (Math.abs(er - ir) + Math.abs(ec - ic)) === 1;
+  }
+
+  function moveTile(idx) {
+    if (!canMove(idx)) return false;
+    const empty = getEmpty();
+    [board[idx], board[empty]] = [board[empty], board[idx]];
+    moves++;
+    document.getElementById('moves').textContent = moves;
+    render();
+    if (isSolved(board)) {
+      document.getElementById('winMsg').textContent = '🎉 拼好了！你好厲害！';
+    }
+    return true;
+  }
+
+  function render() {
+    const grid = document.getElementById('puzzle');
+    grid.innerHTML = '';
+    board.forEach((v, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'tile' + (v === '' ? ' empty' : '');
+      btn.textContent = v;
+      if (v !== '') {
+        const solvedPos = TARGET.indexOf(v);
+        if (i === solvedPos) btn.classList.add('correct-pos');
+        btn.addEventListener('click', () => moveTile(i));
+      }
+      grid.appendChild(btn);
+    });
+  }
+
+  function renderPreview() {
+    const p = document.getElementById('preview');
+    p.innerHTML = '';
+    TARGET.forEach(v => {
+      const d = document.createElement('div');
+      d.textContent = v;
+      p.appendChild(d);
+    });
+  }
+
+  function init() {
+    moves = 0;
+    document.getElementById('moves').textContent = '0';
+    document.getElementById('winMsg').textContent = '';
+    shuffleBoard();
+    render();
+    renderPreview();
+  }
+
+  document.getElementById('restartBtn').addEventListener('click', init);
+  init();
+</script>
+</body>
+</html>
